@@ -1,0 +1,141 @@
+<?xml version="1.0"?>
+<robot name="tello" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- Materials -->
+    <material name="Gray">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+    </material>
+    <material name="White">
+        <color rgba="0.9 0.9 0.9 1.0"/>
+    </material>
+    <material name="Red">
+        <color rgba="1.0 0 0 1.0"/>
+    </material>
+    <material name="Green">
+        <color rgba="0 1.0 0 1.0"/>
+    </material>
+    <material name="Blue">
+        <color rgba="0 0 1.0 1.0"/>
+    </material>
+    <material name="Orange">
+        <color rgba="1.0 0.42 0.04 1.0"/>
+    </material>
+    <material name="Brown">
+        <color rgba="0.87 0.81 0.76 1.0"/>
+    </material>
+    <material name="Yellow">
+        <color rgba="1.0 1.0 0 1.0"/>
+    </material>
+
+    <!-- Variables -->
+    <xacro:arg name="base_color_arg" default="Blue"/>
+    <xacro:arg name="suffix" default="1"/>
+    <xacro:arg name="cam_needed" default="true"/>
+
+    <xacro:property name="base_length" value="0.06"/>
+    <xacro:property name="base_radius" value="0.01"/>
+    <xacro:property name="prop_length" value="0.01"/>
+    <xacro:property name="prop_radius" value="0.045"/>
+
+    <!-- Macros -->
+    <xacro:macro name="cylinder_inertial" params="mass radius length oz:=0 roll:=0 pitch:=0 yaw:=0">
+        <inertial>
+        <origin xyz="0 0 ${oz}" rpy="${roll} ${pitch} ${yaw}"/>
+        <mass value="${mass}"/>
+        <inertia ixx="${mass*(3*radius*radius+length*length)/12}"
+            iyy="${mass*(3*radius*radius+length*length)/12}"
+            izz="${mass*radius*radius/2}"
+            ixy="0" iyz="0" ixz="0"/>
+        </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="propeller" params="suffix x y z">
+        <link name="prop_${suffix}">
+            <visual>
+                <geometry>
+                    <cylinder radius="${prop_radius}" length="${prop_length}"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <cylinder radius="${prop_radius}" length="${prop_length}"/>
+                </geometry>
+            </collision>
+            <xacro:cylinder_inertial mass="0.01" radius="${prop_radius}" length="${prop_length}"/>
+        </link>
+        <joint name="base_to_prop_${suffix}" type="fixed">
+            <parent link="base_link"/>
+            <child link="prop_${suffix}"/>
+            <origin xyz="${x} ${y} ${z}"/>
+        </joint>
+    </xacro:macro>
+
+
+    <!-- *****************BASE LINK************************* -->
+    <link name="base_link">
+        <visual>
+            <origin rpy="0 ${pi/2} 0"/>
+            <geometry>
+                <cylinder radius="${base_radius}" length="${base_length}"/>
+            </geometry>
+            <material name="$(arg base_color_arg)"/>
+        </visual>
+        <collision>
+            <origin rpy="0 ${pi/2} 0"/>
+            <geometry>
+                <cylinder radius="0.01" length="0.06"/>
+            </geometry>
+        </collision>
+        <xacro:cylinder_inertial mass="0.1" radius="${base_radius}" length="${base_length}" pitch="${pi/2}"/>
+    </link>
+
+    <xacro:propeller suffix="front_right" x="0.05" y="-0.05" z="0"/>
+    <xacro:propeller suffix="rear_left" x="-0.05" y="0.05" z="0"/>
+    <xacro:propeller suffix="front_left" x="0.05" y="0.05" z="0"/>
+    <xacro:propeller suffix="rear_right" x="-0.05" y="-0.05" z="0"/>
+
+    <!-- Camera link -->
+    <link name="camera_link">
+        <visual>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.005"/>
+            </geometry>
+            <material name="Red"/>
+        </visual>
+    </link>
+    <joint name="camera_joint" type="fixed">
+        <origin xyz="0.03 0 0"/>
+        <parent link="base_link"/>
+        <child link="camera_link"/>
+    </joint>
+
+
+    <!-- GAZEBO -->
+	<gazebo reference="base_link">
+		<material>Gazebo/$(arg base_color_arg)</material>
+	</gazebo>
+    <gazebo reference="prop_front_left">
+		<material>Gazebo/Black</material>
+	</gazebo>
+    <gazebo reference="prop_front_right">
+		<material>Gazebo/Black</material>
+	</gazebo>
+    <gazebo reference="prop_rear_left">
+		<material>Gazebo/White</material>
+	</gazebo>
+    <gazebo reference="prop_rear_right">
+		<material>Gazebo/White</material>
+	</gazebo>
+
+    <gazebo reference="camera_link">
+        <material>Gazebo/Red</material>
+    </gazebo>
+
+    <gazebo>
+        <plugin name="TelloPlugin" filename="libTelloPlugin.so">
+            <parameter name="use_sim_time" type="bool">1</parameter>
+            <link_name>base_link</link_name>
+            <center_of_mass>0 0 0</center_of_mass>
+        </plugin>
+    </gazebo>
+</robot>
